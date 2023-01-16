@@ -10,6 +10,7 @@
 
     <body>
         <main id="main-holder">
+            <button id="info">Get your name</button>
             <a href="/logout" id="logout">Logout</a>
 
             <h1 id="login-header">Login</h1>
@@ -123,35 +124,40 @@
         const loginButton = document.getElementById("login-form-submit");
         const loginErrorMsg = document.getElementById("login-error-msg");
         const logoutLink =  document.getElementById("logout");
+        const infoButton = document.getElementById("info")
 
-        let access_token, id_token;
+        let token_type, access_token, id_token;
 
         try {
             access_token = JSON.parse(session).access_token;
             id_token = JSON.parse(session).id_token;
+            token_type = JSON.parse(session).token_type;
         } catch(e) {}
 
-        if (id_token) {
-            const base64Url = id_token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            const payload = JSON.parse(jsonPayload);
-            console.log(payload);
+        if (token_type && access_token) {
+            axios({
+                method: 'post',
+                url: '/getname',
+                headers: {
+                    'Authorization': token_type + ' ' + access_token
+                },
+                data: {
+                    id_token: id_token
+                }
+            }).then((response) => {
+                const username = response.data && response.data.message;
+                if (username) {
+                    const mainHolder = document.getElementById("main-holder");
+                    const loginHeader = document.getElementById("login-header");
 
-            const username = payload.name;
-            if (username) {
-                const mainHolder = document.getElementById("main-holder");
-                const loginHeader = document.getElementById("login-header");
+                    loginForm.remove();
+                    loginErrorMsg.remove();
+                    loginHeader.remove();
 
-                loginForm.remove();
-                loginErrorMsg.remove();
-                loginHeader.remove();
-
-                mainHolder.append(`Hello ${username}`);
-                logoutLink.style.opacity = 1;
-            }
+                    mainHolder.append(`Hello ${username}`);
+                    logoutLink.style.opacity = 1;
+                }
+            })
         }
 
         logoutLink.addEventListener("click", (e) => {
@@ -178,6 +184,24 @@
                 location.reload();
             }).catch((response) => {
                 loginErrorMsg.style.opacity = 1;
+            });
+        })
+
+        infoButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            axios({
+                method: 'post',
+                url: '/getname',
+                headers: {
+                    'Authorization': token_type + ' ' + access_token
+                },
+                data: {
+                    id_token: id_token
+                }
+            }).then((response) => {
+                alert(response.data.message);
+            }).catch((response) => {
+                alert('Unauthorized');
             });
         })
     </script>

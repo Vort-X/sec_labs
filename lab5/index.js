@@ -1,4 +1,5 @@
 const express = require('express');
+const { auth } = require('express-oauth2-jwt-bearer');
 const request = require('request');
 const bodyParser = require('body-parser');
 const path = require('path');
@@ -8,15 +9,28 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-    next();
+const checkJwt = auth({
+    audience: 'https://kpi.eu.auth0.com/api/v2/',
+    issuerBaseURL: `https://kpi.eu.auth0.com/`,
+});
+
+app.post('/getname', checkJwt, (req, res) => {
+    console.log(req.body);
+    if (req.body.id_token) {
+        res.json({
+            message: JSON.parse(Buffer.from(req.body.id_token.split('.')[1], 'base64').toString()).name
+        })
+    } else {
+        console.log('============================================')
+        res.sendStatus(401).send();
+    }
 });
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname+'/index.html'));
 })
 
-app.get('/logout', (req, res) => {
+app.get('/logout', checkJwt, (req, res) => {
     res.redirect('/');
 });
 
